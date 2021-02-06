@@ -2,10 +2,9 @@
 Author: Ruben Rudov
 Purpose: A local server for an android application that handles the connection to the mongodb database
 """
+
 import socket
 import threading
-import smtplib
-import json
 from datetime import datetime
 from pymongo import MongoClient
 
@@ -46,7 +45,6 @@ Overview:
 # Server & communication constants setting
 SERVER_IP = "0.0.0.0"
 PORT = 8080
-import string
 DATABASE_CLUSTER = MongoClient(
     "mongodb://admin:G6HyJikC1wKwoz1c@main-cluster-shard-00-00.hukmn.mongodb.net:27017,main-cluster-shard-00-01.hukmn.mongodb.net:27017,main-cluster-shard-00-02.hukmn.mongodb.net:27017/<dbname>?ssl=true&replicaSet=atlas-rct4tj-shard-0&authSource=admin&retryWrites=true&w=majority")
 DATABASE = DATABASE_CLUSTER["travmedia"]
@@ -76,13 +74,11 @@ def get_account_password(username: str):
     for result in search_results:
         print(result)
 
-    print(username)
-
 
 def is_exist_element(value: str, key: str):
     print(f"value: {value} and {key} as key")
 
-    if USERS_COLLECTION.find({key: value}):
+    if USERS_COLLECTION.find({key: value}) is {}:
         print("Exist")
         return True
     return False
@@ -119,8 +115,8 @@ def connection_handling():
 
 def main():
     # testing user
-    username = "rubenrudov"
-    email = "rudovruben4all@gmail.com"
+    username = "RubenRudov2"
+    email = "ruby.rudovmanager@gmail.com"
     password = "12345678"
     add_new_user(username=username, email=email, password=password)
     users = USERS_COLLECTION.find({})
@@ -131,7 +127,7 @@ def main():
     # testing post
     publisher = username
     title = "About my trip to the golan heights"
-    content = ""
+    content = "About my trip to the Negev desert"
     publishing_date = datetime.now().__format__("%d/%m/%Y %H:%M:%S")
     add_new_post(publisher=publisher, title=title, content=content, publishing_date=publishing_date)
     posts = get_all_posts()
