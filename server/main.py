@@ -59,12 +59,10 @@ def add_new_user(username: str, email: str, password: str):
 
     if not is_exist_element(username, "username") or not is_exist_element(email, "email"):
         USERS_COLLECTION.insert_one(post)
+        return True
 
-    else:
-        # TODO: Send a response via the socket for create a toast/alert dialog of "failed to register those values"
-        print("Username or Email is already exist")
-
-    return True
+    print("Debug: username or Email is already exist")
+    return False
 
 
 def get_account_password(username: str):
@@ -90,10 +88,10 @@ def add_new_post(publisher: str, title: str, content: str, publishing_date: str)
 
     if not exist_title(title):
         POSTS_COLLECTION.insert_one(post)
+        return True
 
-    else:
-        # TODO: Send a response via the socket for create a toast/alert dialog of "Post title is already exist"
-        print("Post title is already exist")
+    print("Debug: post title is already exist")
+    return False
 
 
 def get_all_posts():
@@ -110,26 +108,35 @@ def exist_title(title: str):
 # Connection & communication handling
 def connection_request_handling(client_socket: socket.socket, data_struct: json):
     if data_struct["request"] == "add_user":
-        add_new_user(
+        response = add_new_user(
             data_struct["username"],
             data_struct["email"],
             data_struct["password"],
         )
 
-        return "Done"   # TODO: Transport the data by the client socket to the client
+        if response is True:
+            return "Done"   # TODO: Transport the data by the client socket to the client
+
+        else:
+            return "Failed"
 
     elif data_struct["request"] == "get_password":
         password = get_account_password(data_struct["username"])
         return password
 
     elif data_struct["request"] == "add_post":
-        add_new_post(
+        response = add_new_post(
             data_struct["publisher"],
             data_struct["title"],
             data_struct["content"],
             data_struct["publishing_date"],
         )
-        return "Done"   # TODO: Transport the data by the client socket to the client
+
+        if response is True:
+            return "Done"  # TODO: Transport the data by the client socket to the client
+
+        else:
+            return "Failed"
 
     elif data_struct["request"] == "get_all_posts":
         all_posts = get_all_posts()
