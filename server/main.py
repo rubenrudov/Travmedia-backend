@@ -35,7 +35,7 @@ About the database:
     This database is a json/document database that stored in cluster.
     The collections in the database are: users and posts. 
     To work with mongodb in python I've used the pymongo module (open source module that has to be installed with the pip)
-    
+
 Overview:
     Functions were written in name_of_function format.
     For string formatting I've used the f"Variable value: {variable}" format.
@@ -78,6 +78,7 @@ def is_exist_element(value: str, key: str):
     if USERS_COLLECTION.find({key: value}) is {}:
         print("Exist")
         return True
+
     return False
 
 
@@ -106,7 +107,7 @@ def exist_title(title: str):
 
 
 # Connection & communication handling
-def connection_request_handling(client_socket: socket.socket, data_struct: json):
+def request_handling(client_socket: socket.socket, data_struct: json):
     if data_struct["request"] == "add_user":
         response = add_new_user(
             data_struct["username"],
@@ -115,14 +116,16 @@ def connection_request_handling(client_socket: socket.socket, data_struct: json)
         )
 
         if response is True:
-            return "Done"   # TODO: Transport the data by the client socket to the client
+            data = {"response": "Successful"}
 
         else:
-            return "Failed"
+            data = {"response": "Unsuccessful"}
+
+        client_socket.send(json.dumps(data).encode())
 
     elif data_struct["request"] == "get_password":
         password = get_account_password(data_struct["username"])
-        return password
+        client_socket.send(password.encode())
 
     elif data_struct["request"] == "add_post":
         response = add_new_post(
@@ -133,24 +136,32 @@ def connection_request_handling(client_socket: socket.socket, data_struct: json)
         )
 
         if response is True:
-            return "Done"  # TODO: Transport the data by the client socket to the client
+            client_socket.send("Successful".encode())
 
         else:
-            return "Failed"
+            client_socket.send("Unsuccessful".encode())
 
     elif data_struct["request"] == "get_all_posts":
         all_posts = get_all_posts()
-        return json.load(all_posts)     # TODO: Transport the data by the client socket to the client
+        for post in all_posts:    # TODO: Transport the data by the client socket to the client
+            data = client_socket.recv(1024)
+            print(f"Debug: {data}")
+            client_socket.send(json.loads(post))
+
+        data = client_socket.recv(1024)
+        print(f"Debug: {data}")
+        client_socket.send("done".encode())
 
     else:
-        print("Unknown request")       # TODO: Send an "unknown request" message to the user
+        client_socket.send("Unknown command".encode())      # TODO: Send an "unknown request" message to the user
 
 
 def new_connection(client_socket: socket.socket, ip_address: str):
     print(f"Debug: {ip_address} has connected to the server via {client_socket}")
-    data = client_socket.recv(1024).decode('UTF-8')
-    data_struct = json.load(data)
-    connection_request_handling(client_socket, data_struct)
+    data = client_socket.recv(1024)
+    decoded_data = data.decode()
+    data_struct = json.loads(decoded_data)
+    request_handling(client_socket, data_struct)
     return data_struct
 
 
