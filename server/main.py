@@ -66,8 +66,9 @@ def add_new_user(username: str, email: str, password: str):
 
 
 def get_account_password(username: str):
-    search_results = USERS_COLLECTION.find({"username": username}["password"])
-    print(f"Debug: {search_results}")
+    search_results = USERS_COLLECTION.find({"username": username})
+    for search_result in search_results:
+        return search_result["password"]
 
     return search_results
 
@@ -85,7 +86,7 @@ def is_exist_element(value: str, key: str):
 # Posts collection related
 def add_new_post(publisher: str, title: str, content: str, publishing_date: str):
     print(f"Post data: {publisher}, {title}, {content} {publishing_date}")
-    post = {"publisher": publisher, "title": title, "content": content, "publishing_date": publishing_date}
+    post = {"_id": POSTS_COLLECTION.count() + 1, "publisher": publisher, "title": title, "content": content, "publishing_date": publishing_date}
 
     if not exist_title(title):
         POSTS_COLLECTION.insert_one(post)
@@ -95,19 +96,32 @@ def add_new_post(publisher: str, title: str, content: str, publishing_date: str)
     return False
 
 
-def get_all_posts():
+def get_all_posts(client_sock: socket.socket):
     all_posts = POSTS_COLLECTION.find({})  # gets all the posts
-    return all_posts
+
+    full_data = []
+
+    for post in all_posts:
+        full_data.append(post)
+
+    for data_piece in full_data:
+        print(f"Sending {data_piece} to the client")
+        client_sock.send(json.dumps(data_piece).encode())
+        data_received = client_sock.recv(1024).decode()
+        print(f"Received: {data_received}")
 
 
 def exist_title(title: str):
-    if USERS_COLLECTION.find({"title": title}):
+
+    if POSTS_COLLECTION.find({"title": title}) is {}:
+        print("Exist")
         return True
+
     return False
 
 
 # Connection & communication handling
-def request_handling(client_socket: socket.socket, data_struct: json):
+def request_handling(client_socket: socket.socket, data_struct):
     if data_struct["request"] == "add_user":
         response = add_new_user(
             data_struct["username"],
@@ -125,7 +139,8 @@ def request_handling(client_socket: socket.socket, data_struct: json):
 
     elif data_struct["request"] == "get_password":
         password = get_account_password(data_struct["username"])
-        client_socket.send(password.encode())
+        data = {"response": f"{password}"}
+        client_socket.send(json.dumps(data).encode())
 
     elif data_struct["request"] == "add_post":
         response = add_new_post(
@@ -136,21 +151,21 @@ def request_handling(client_socket: socket.socket, data_struct: json):
         )
 
         if response is True:
-            client_socket.send("Successful".encode())
+            data = {"response": "Successful"}
 
         else:
-            client_socket.send("Unsuccessful".encode())
+            data = {"response": "Unsuccessful"}
+        client_socket.send(json.dumps(data).encode())
 
     elif data_struct["request"] == "get_all_posts":
-        all_posts = get_all_posts()
-        for post in all_posts:    # TODO: Transport the data by the client socket to the client
-            data = client_socket.recv(1024)
-            print(f"Debug: {data}")
-            client_socket.send(json.loads(post))
+        get_all_posts(client_socket)
+        data = {"response": "finished"}
+        client_socket.send(json.dumps(data).encode())
 
-        data = client_socket.recv(1024)
-        print(f"Debug: {data}")
-        client_socket.send("done".encode())
+    # elif data_struct["request"] == "get_specific_post":
+    #   TODO: Add mongodb function for this operation
+    #
+    #
 
     else:
         client_socket.send("Unknown command".encode())      # TODO: Send an "unknown request" message to the user
@@ -162,6 +177,7 @@ def new_connection(client_socket: socket.socket, ip_address: str):
     decoded_data = data.decode()
     data_struct = json.loads(decoded_data)
     request_handling(client_socket, data_struct)
+    client_socket.close()
     return data_struct
 
 
